@@ -55,7 +55,9 @@ it through interactive commands:
 * `positions` lists current positions.
 * `trades` lists current trades.
 * `orders` lists current orders.
-* `capital` displays current realized capital.
+* `capital` displays current realized capital. Or set the allocated
+  capital if an argument is passed.
+* `risk` displays current risk and global allowed risk.
 * `stop BNBBTC 0.0025` chnage the stop loss level for a trade. If the
   trade is already an active position, the stop loss is chnaged on the
   exchange. If the trade isn't a position, the position size is

@@ -95,7 +95,6 @@ class Trade(object):
                 if len(orders) > 1:
                     print('Warning: %d orders for %s' %
                           (len(orders, self.pair)))
-        print(self.order)
         return self
 
     def __str__(self):
@@ -119,20 +118,45 @@ class TraderApp(object):
             self.trades = [Trade(data=d).validate_order(self.client)
                            for d in data['trades']]
             self.capital = data['capital']
+            self.risk = data['risk']
+            self.number = data['number']
         except FileNotFoundError:
             self.trades = []
-            self.capital = 0
+            self.capital = 0.0
+            self.capital = 0.01
+            self.number = 5
 
     def save_data(self, fname="trading-data.json"):
         data = {'trades': [t.__dict__ for t in self.trades],
                 'capital': self.capital,
+                'risk': self.risk,
+                'number': self.number
                 }
         with open(fname, 'w') as f:
             json.dump(data, f)
 
     def get_capital(self):
-        btc_asset = self.client.get_asset_balance('BTC')
-        return float(btc_asset['free']) + float(btc_asset['locked'])
+        if self.capital == 0:
+            asset = self.client.get_asset_balance('BTC')
+            self.capital = float(asset['free']) + float(asset['locked'])
+        return self.capital
+
+    def set_capital(self, capital):
+        asset = self.client.get_asset_balance('BTC')
+        global_capital = float(asset['free']) + float(asset['locked'])
+        if capital <= global_capital:
+            self.capital = capital
+        else:
+            print("Unable to set capital to %s as it's bigger than the total capital %s" %
+                  (capital, global_capital))
+        return self.capital
+
+    def get_engaged_capital(self):
+        engaged_capital = 0.0
+        for t in self.trades:
+            if t.status == 'risky':
+                engaged_capital += t.capital
+        return engaged_capital
 
     def new_trade(self, pair, stop, entry, amount):
         self.trades.append(Trade(pair=pair, stop=stop, entry=entry,
