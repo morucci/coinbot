@@ -68,8 +68,10 @@ it through interactive commands:
 A trade can have the following states:
 
 * `entry` waiting for the trade to become a position by having the
-  entry order executed. That's the initial state when a `trade`
-  command has been issued.
+  entry order executed (1 buy stop-limit). That's the initial state
+  when a `trade` command has been issued.
+* `suspended` waiting for a new available position when the maximum
+  number of risky positions are at risk.
 * `risky` when the position is between the stop loss and the R1 level
   (entry + 1R). It means there are 2 orders for this state: one OCO
   for 50% of the position (limit at R1 and stop) and the other 50%

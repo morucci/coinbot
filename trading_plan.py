@@ -6,12 +6,12 @@ import inspect
 
 
 class TradingPlanBase(object):
-    def __init__(self, client, cls):
+    def __init__(self, app, cls):
         self.matches = []
         self.options = {x[0][:-4]: x[1]
                         for x in inspect.getmembers(cls, inspect.isfunction)
                         if x[0].endswith('_cmd')}
-        print(self.options)
+        self.app = app
 
     def completer(self, text, state):
         response = None
@@ -32,8 +32,11 @@ class TradingPlanBase(object):
 
     def process_args(self, args):
         try:
-            self.options[args[0]](args[1:])
+            self.options[args[0]](self, args[1:])
         except KeyError:
             print('Unknown command %s' % args[0])
+
+    def help_cmd(self, *args):
+        print('Available commands: ' + ' '.join(sorted(self.options.keys())))
 
 # trading_plan.py ends here
