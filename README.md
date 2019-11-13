@@ -66,6 +66,8 @@ it through interactive commands:
 * `close BNBBTC` closes a trade on the BNB/BTC pair by canceling all
   the open orders and issuing a market order if the trade is an open
   position else it just cancels the trade.
+* `save` the current state of the trades.
+* `exit` without saving. To exit and save, just issue a `Ctrl-D`.
 
 A trade can have the following states:
 

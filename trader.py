@@ -141,15 +141,9 @@ class TraderApp(object):
             self.capital = float(asset['free']) + float(asset['locked'])
         return self.capital
 
-    def set_capital(self, capital):
+    def get_available_capital(self):
         asset = self.client.get_asset_balance('BTC')
-        global_capital = float(asset['free']) + float(asset['locked'])
-        if capital <= global_capital:
-            self.capital = capital
-        else:
-            print("Unable to set capital to %s as it's bigger than the total capital %s" %
-                  (capital, global_capital))
-        return self.capital
+        return float(asset['free'])
 
     def get_engaged_capital(self):
         engaged_capital = 0.0
@@ -158,9 +152,31 @@ class TraderApp(object):
                 engaged_capital += t.capital
         return engaged_capital
 
-    def new_trade(self, pair, stop, entry, amount):
-        self.trades.append(Trade(pair=pair, stop=stop, entry=entry,
-                                 amount=amount, status=ENTRY))
+    def set_capital(self, capital):
+        asset = self.client.get_asset_balance('BTC')
+        global_capital = float(asset['free']) + float(asset['locked'])
+        if capital <= global_capital:
+            self.capital = capital
+        else:
+            print("Unable to set capital to %s as it's bigger "
+                  "than the total capital %s" %
+                  (capital, global_capital))
+        return self.capital
+
+    def new_trade(self, pair, stop, entry, amount, order=None):
+        trade = Trade(pair=pair, stop=stop, entry=entry,
+                      amount=amount, status=ENTRY, order=order)
+        self.trades.append(trade)
+        return trade
+
+    def buy_stop_limit(self, pair, stop, limit, amount):
+        return self.client.create_order(**{'symbol': pair,
+                                           'type': 'STOP_LOSS_LIMIT',
+                                           'side': 'BUY',
+                                           'timeInForce': 'GTC',
+                                           'quantity': amount,
+                                           'stopPrice': stop,
+                                           'price': limit})
 
 
 if __name__ == "__main__":

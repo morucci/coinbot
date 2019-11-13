@@ -9,7 +9,34 @@ class TradingPlan(TradingPlanBase):
         super().__init__(app, TradingPlan)
 
     def trade_cmd(self, args):
-        pass
+        if len(args) != 3:
+            print('Usage: trade <pair> <stop level> <entry level>')
+        else:
+            count = 0
+            for trade in self.app.trades:
+                if trade.status == 'risky':
+                    count += 1
+            if count < self.app.number:
+                pair = args[0]
+                stop = args[1]
+                entry = round(args[2], 8)
+                limit = round(entry + (entry - stop) * 0.09, 6)
+                risk = limit - stop
+                amount = round(self.app.capital * self.app.risk / risk, 2)
+                available_capital = self.app.get_available_capital()
+                if (amount * limit > available_capital):
+                    print('position too big %s > %s' %
+                          (amount * limit, available_capital))
+                    return
+                else:
+                    print(pair, entry, limit, amount, amount * limit)
+                try:
+                    order = self.app.buy_stop_limit(pair, entry, limit, amount)
+                    trade = self.app.new_trade(pair, stop, entry, amount,
+                                               order)
+                    print(trade)
+                except FileNotFoundError as e:
+                    print('Unable to place order: %s' % e)
 
     def positions_cmd(self, args):
         pass

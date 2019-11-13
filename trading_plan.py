@@ -3,6 +3,7 @@
 '''
 
 import inspect
+import sys
 
 
 class TradingPlanBase(object):
@@ -32,11 +33,21 @@ class TradingPlanBase(object):
 
     def process_args(self, args):
         try:
-            self.options[args[0]](self, args[1:])
+            func = self.options[args[0]]
         except KeyError:
             print('Unknown command %s' % args[0])
+            return
+        # Call outside of the try block to get real KeyError
+        # exceptions
+        func(self, args[1:])
 
     def help_cmd(self, *args):
         print('Available commands: ' + ' '.join(sorted(self.options.keys())))
+
+    def exit_cmd(self, *args):
+        sys.exit(0)
+
+    def save_cmd(self, *args):
+        self.app.save_data()
 
 # trading_plan.py ends here
