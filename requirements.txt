@@ -1,1 +1,1 @@
-python-binance
+git+git://github.com/flepied/python-binance@new-orders#egg=binance

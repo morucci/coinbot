@@ -71,6 +71,17 @@ def load_trading_plan(module_name):
     return module.TradingPlan
 
 
+def f2s(f):
+    return '%.8f' % f
+
+
+def order_type(order):
+    if 'type' in order:
+        return '%s(%s)' % (order['type'], order['orderId'])
+    else:
+        return 'OCO(%s)' % order['orderListId']
+
+
 class Trade(object):
     def __init__(self, pair=None, entry=None, stop=None, order=None,
                  stop_order=None, amount=None, capital=None, status=None,
@@ -87,43 +98,58 @@ class Trade(object):
             self.capital = capital
             self.status = status
 
-    def validate_order(self, client):
-        if self.order is None:
-            orders = client.get_open_orders(symbol=self.pair)
-            if len(orders) > 0:
-                self.order = orders[0]
-                if len(orders) > 1:
-                    print('Warning: %d orders for %s' %
-                          (len(orders, self.pair)))
-        return self
-
     def __str__(self):
         return ('%s amount=%s stop=%s entry=%s [%s] order=%s' %
                 (self.pair, self.amount, self.stop,
                  self.entry,
-                 self.status, '%s(%s)' % (self.order['type'],
-                                          self.order['orderId'])
-                 if self.order else 'NONE'))
+                 self.status,
+                 order_type(self.order) if self.order else 'NONE'))
 
 
 class TraderApp(object):
     def __init__(self, key, secret):
         self.client = Client(key, secret)
         self.load_data()
+        self.get_exchange_info()
+
+    def get_exchange_info(self):
+        self.info = self.client.get_exchange_info()
+
+    def lookup_info(self, pair):
+        for info in self.info['symbols']:
+            if info['symbol'] == pair:
+                return info
+        return None
+
+    def validate_amount(self, amount, info):
+        if info:
+            for filter in info['filters']:
+                if filter['filterType'] == 'LOT_SIZE':
+                    step_size = float(filter['stepSize'])
+                    return int(amount / step_size) * step_size
+        return amount
+
+    def validate_price(self, price, info):
+        if info:
+            for filter in info['filters']:
+                if filter['filterType'] == 'PRICE_FILTER':
+                    step_size = float(filter['tickSize'])
+                    price = int(price / step_size) * step_size
+        s = '%.8f' % price
+        return s
 
     def load_data(self, fname="trading-data.json"):
         try:
             with open(fname) as f:
                 data = json.load(f)
-            self.trades = [Trade(data=d).validate_order(self.client)
-                           for d in data['trades']]
+            self.trades = [Trade(data=d) for d in data['trades']]
             self.capital = data['capital']
             self.risk = data['risk']
             self.number = data['number']
         except FileNotFoundError:
             self.trades = []
             self.capital = 0.0
-            self.capital = 0.01
+            self.risk = 0.01
             self.number = 5
 
     def save_data(self, fname="trading-data.json"):
@@ -134,6 +160,13 @@ class TraderApp(object):
                 }
         with open(fname, 'w') as f:
             json.dump(data, f)
+
+    def get_orders(self, pair):
+        return self.client.get_open_orders(symbol=pair)
+
+    def get_position(self, asset):
+        data = self.client.get_asset_balance(asset=asset)
+        return float(data['free']) + float(data['locked'])
 
     def get_capital(self):
         if self.capital == 0:
@@ -170,6 +203,11 @@ class TraderApp(object):
         return trade
 
     def buy_stop_limit(self, pair, stop, limit, amount):
+        info = self.lookup_info(pair)
+        amount = self.validate_amount(amount, info)
+        stop = self.validate_price(stop, info)
+        limit = self.validate_price(limit, info)
+        print('buy_stop_limit %s %s %s %s' % (pair, stop, limit, amount))
         return self.client.create_order(**{'symbol': pair,
                                            'type': 'STOP_LOSS_LIMIT',
                                            'side': 'BUY',
@@ -177,6 +215,46 @@ class TraderApp(object):
                                            'quantity': amount,
                                            'stopPrice': stop,
                                            'price': limit})
+
+    def sell_oco(self, pair, stop, limit, amount):
+        print('sell_oco', pair, stop, limit, amount)
+        info = self.lookup_info(pair)
+        amount = self.validate_amount(amount, info)
+        stop = self.validate_price(stop, info)
+        limit = self.validate_price(limit, info)
+        if 'STOP_LOSS' in info['orderTypes']:
+            return self.client.order_oco_sell(symbol=pair,
+                                              quantity=amount,
+                                              price=limit,
+                                              stopPrice=stop)
+        else:
+            return self.client.order_oco_sell(symbol=pair,
+                                              quantity=amount,
+                                              price=limit,
+                                              stopPrice=stop,
+                                              stopLimitTimeInForce='GTC',
+                                              stopLimitPrice=stop / 2)
+
+    def sell_stop(self, pair, stop, amount):
+        print('sell_stop', pair, stop, amount)
+        info = self.lookup_info(pair)
+        amount = self.validate_amount(amount, info)
+        stop = self.validate_price(stop, info)
+        if 'STOP_LOSS' in info['orderTypes']:
+            return self.client.create_order(symbol=pair,
+                                            type='STOP_LOSS',
+                                            side='SELL',
+                                            quantity=amount,
+                                            timeInForce='GTC',
+                                            stopPrice=stop)
+        else:
+            return self.client.create_order(symbol=pair,
+                                            type='STOP_LOSS_LIMIT',
+                                            side='SELL',
+                                            quantity=amount,
+                                            timeInForce='GTC',
+                                            stopPrice=stop,
+                                            price=stop / 2)
 
 
 if __name__ == "__main__":
