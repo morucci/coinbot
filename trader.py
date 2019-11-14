@@ -106,6 +106,9 @@ class Trade(object):
         if self.capital is None and self.status in ('risky', 'trendy'):
             self.capital = self.entry * self.amount
 
+    def is_active(self):
+        return self.status not in ('exited', 'suspended')
+
     def __str__(self):
         return ('%s amount=%s stop=%s entry=%s [%s] order=%s' %
                 (self.pair, self.amount, self.stop,
@@ -267,6 +270,10 @@ class TraderApp(object):
                                             timeInForce='GTC',
                                             stopPrice=stop,
                                             price=stop / 2)
+
+    def cancel_order(self, order):
+        self.client.cancel_order(symbol=order['symbol'],
+                                 orderId=order['orderId'])
 
 
 if __name__ == "__main__":

@@ -41,6 +41,8 @@ class TradingPlan(TradingPlanBase):
     def reconcile(self):
         "Do the magic between the local data, active orders and positions"
         for t in self.app.trades:
+            if not t.is_active():
+                continue
             orders = self.app.get_orders(t.pair)
             reconcile_orders(orders, t)
             position = self.app.get_position(t.pair[:-3])
@@ -92,10 +94,23 @@ class TradingPlan(TradingPlanBase):
         trade.order = self.app.sell_oco(trade.pair, trade.stop, limit, size)
         trade.stop_order = self.app.sell_stop(trade.pair, trade.stop, size)
 
+    def lookup_trade(self, pair):
+        for t in self.app.trades:
+            if t.pair == pair and t.is_active():
+                return t
+        return None
+
     def trade_cmd(self, args):
         if len(args) != 3:
             print('Usage: trade <pair> <stop level> <entry level>')
         else:
+            t = self.lookup_trade(args[0])
+            if t:
+                print('There is already an ongoing trade on %s:' % args[0])
+                print(t)
+                print("Use 'close %s' to stop it before issuing a new trade"
+                      % t.pair)
+                return
             try:
                 (pair, stop, entry, amount, order) = self.buy(args[0],
                                                               args[1],
@@ -115,7 +130,7 @@ class TradingPlan(TradingPlanBase):
 
     def trades_cmd(self, args):
         for trade in self.app.trades:
-            if len(args) == 0 or trade.pair in args:
+            if (len(args) == 0 or trade.pair in args) and trade.is_active():
                 print(trade)
 
     def orders_cmd(self, args):
@@ -138,6 +153,18 @@ class TradingPlan(TradingPlanBase):
         pass
 
     def close_cmd(self, args):
-        pass
+        if len(args) != 1:
+            print('Usage: close <pair>')
+            return
+        trade = self.lookup_trade(args[0])
+        if not trade:
+            print('No trade on %s' % args[0])
+            return
+        if trade.status == 'entry':
+            for order in self.app.get_orders(trade.pair):
+                self.app.cancel_order(order)
+            trade.status = 'exited'
+        else:
+            print('close not implemented for status %s' % trade.status)
 
 # r1_tp.py ends here
