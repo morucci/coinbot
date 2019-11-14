@@ -77,9 +77,11 @@ def f2s(f):
 
 def order_type(order):
     if 'type' in order:
-        return '%s(%s)' % (order['type'], order['orderId'])
+        return '%s/%s(%s)' % (order['side'], order['type'], order['orderId'])
     else:
-        return 'OCO(%s)' % order['orderListId']
+        if type(order) is list:
+            order = order[0]
+        return '%s/OCO(%s)' % (order['side'], order['orderListId'])
 
 
 class Trade(object):

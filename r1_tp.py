@@ -8,6 +8,24 @@ class NotEnoughCapitalError(Exception):
     pass
 
 
+def reconcile_orders(orders, trade):
+    if len(orders) == 1:
+        trade.order = orders[0]
+    else:
+        trade.order = [o for o in orders if o['orderListId'] != '-1']
+        trade.stop_order = [o for o in orders if o['orderListId'] == '-1']
+
+
+def reconcile_amount(position, trade):
+    if position >= (trade.amount * 0.9) and position <= trade.amount:
+        trade.amount = position
+        return True
+    else:
+        print('Unable to reconcile amount %s from position %s for %s' %
+              (trade.amount, position, trade.pair))
+        return False
+
+
 class TradingPlan(TradingPlanBase):
     def __init__(self, app):
         super().__init__(app, TradingPlan)
@@ -20,6 +38,7 @@ class TradingPlan(TradingPlanBase):
             print(t)
             orders = self.app.get_orders(t.pair)
             print(orders)
+            reconcile_orders(orders, t)
             position = self.app.get_position(t.pair[:-3])
             print('%.2f %s' % (position, t.pair[:-3]))
             if t.status == 'entry' and len(orders) == 0:
@@ -27,22 +46,13 @@ class TradingPlan(TradingPlanBase):
                     self.buy(t.pair, t.stop, t.entry)
                 else:
                     t.status = 'risky'
-                    if self.reconcile_amount(position, t):
+                    if reconcile_amount(position, t):
                         self.sell_risky(t)
             elif t.status == 'risky' and len(orders) == 0:
-                if self.reconcile_amount(position, t):
+                if reconcile_amount(position, t):
                     self.sell_risky(t)
             elif t.status == 'trendy' and len(orders) == 0:
                 self.sell_trendy(t)
-
-    def reconcile_amount(self, position, trade):
-        if position >= (trade.amount * 0.9) and position <= trade.amount:
-            trade.amount = position
-            return True
-        else:
-            print('Unable to reconcile amount %s from position %s for %s' %
-                  (trade.amount, position, trade.pair))
-            return False
 
     def buy(self, pair, stop, entry):
         count = 0
