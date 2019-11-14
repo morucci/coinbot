@@ -235,6 +235,7 @@ class TraderApp(object):
         print('sell_oco', pair, stop, limit, amount)
         info = self.lookup_info(pair)
         amount = self.validate_amount(amount, info)
+        half = self.validate_price(stop / 2, info)
         stop = self.validate_price(stop, info)
         limit = self.validate_price(limit, info)
         if 'STOP_LOSS' in info['orderTypes']:
@@ -248,12 +249,13 @@ class TraderApp(object):
                                               price=limit,
                                               stopPrice=stop,
                                               stopLimitTimeInForce='GTC',
-                                              stopLimitPrice=stop / 2)
+                                              stopLimitPrice=half)
 
     def sell_stop(self, pair, stop, amount):
         print('sell_stop', pair, stop, amount)
         info = self.lookup_info(pair)
         amount = self.validate_amount(amount, info)
+        half = self.validate_price(stop / 2, info)
         stop = self.validate_price(stop, info)
         if 'STOP_LOSS' in info['orderTypes']:
             return self.client.create_order(symbol=pair,
@@ -269,7 +271,7 @@ class TraderApp(object):
                                             quantity=amount,
                                             timeInForce='GTC',
                                             stopPrice=stop,
-                                            price=stop / 2)
+                                            price=half)
 
     def cancel_order(self, order):
         self.client.cancel_order(symbol=order['symbol'],
