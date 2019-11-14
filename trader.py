@@ -3,12 +3,13 @@
 '''
 '''
 
-
+import os
 import importlib
 import json
 import re
 import readline
 import sys
+import argparse
 
 from binance.client import Client
 
@@ -279,12 +280,22 @@ class TraderApp(object):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print('Usage: %s <trading plan>' % sys.argv[0])
+    parser = argparse.ArgumentParser(prog='coinbot')
+    parser.add_argument(
+        '-c', '--creds', default='binance.txt',
+        help='Path to the credentials file')
+    parser.add_argument(
+        '-t', '--trading-plan',
+        help='Path to the trading plan')
+    args = parser.parse_args()
+    if not args:
+        parser.format_help()
         sys.exit(1)
-    (key, secret) = [line.rstrip("\n") for line in open("binance.txt")]
+    (key, secret) = [
+        line.rstrip("\n")
+        for line in open(os.path.expanduser(args.creds))]
     app = TraderApp(key, secret)
-    trading_plan_class = load_trading_plan(sys.argv[1])
+    trading_plan_class = load_trading_plan(args.trading_plan)
     input_loop(app, trading_plan_class)
 
 # trader.py ends here
