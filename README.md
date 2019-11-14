@@ -92,3 +92,12 @@ A trade can have the following states:
 more on the account, it manages only the part that has been
 allocated. When there are gains or losses, the capital is adjusted
 automatically to benefit from compound interests.
+
+## Current restrictions
+
+* hardcoded BTC as the base crypto.
+* can have only one trade per pair on the account. If you trade
+  manually on the same pair and the same account, there will be
+  troubles.
+* hardcoded risk per trade at 1%.
+* hardcoded 5 trades max at risk.
