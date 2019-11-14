@@ -41,13 +41,18 @@ def input_loop(app, executor_cls):
     readline.parse_and_bind('tab: complete')
 
     try:
+        sys.stderr.write("Loading history of commands...")
         readline.read_history_file('.trader_history')
+        sys.stderr.write("done\n")
     except Exception:
         pass
 
+    sys.stderr.write("Creating trading plan:\n")
     executor = executor_cls(app)
     readline.set_completer(executor.completer)
+    sys.stderr.write("Trading plan ready\n")
 
+    sys.stderr.write("System ready, use 'help' to display the available commands.\n")
     while True:
         try:
             line = input('$ ')
@@ -66,22 +71,21 @@ def input_loop(app, executor_cls):
 def load_trading_plan(module_name):
     if module_name[-3:] == '.py':
         module_name = module_name[:-3]
-        print("Loding module %s" % module_name)
+    sys.stderr.write("Loading module %s..." % module_name)
     module = importlib.import_module(module_name)
+    sys.stderr.write("done\n")
     return module.TradingPlan
 
 
-def f2s(f):
-    return '%.8f' % f
-
-
 def order_type(order):
+    if type(order) is list:
+        order = order[0]
     if 'type' in order:
-        return '%s/%s(%s)' % (order['side'], order['type'], order['orderId'])
+        return '%s/%s(%s)' % (order.get('side', 'UNKNOWN'), order['type'],
+                              order['orderId'])
     else:
-        if type(order) is list:
-            order = order[0]
-        return '%s/OCO(%s)' % (order['side'], order['orderListId'])
+        return '%s/OCO(%s)' % (order.get('side', 'UNKNOWN'),
+                               order['orderListId'])
 
 
 class Trade(object):
@@ -99,6 +103,8 @@ class Trade(object):
             self.amount = amount
             self.capital = capital
             self.status = status
+        if self.capital is None and self.status in ('risky', 'trendy'):
+            self.capital = self.entry * self.amount
 
     def __str__(self):
         return ('%s amount=%s stop=%s entry=%s [%s] order=%s' %
@@ -111,8 +117,12 @@ class Trade(object):
 class TraderApp(object):
     def __init__(self, key, secret):
         self.client = Client(key, secret)
+        sys.stderr.write("Loading data...")
         self.load_data()
+        sys.stderr.write("done\n")
+        sys.stderr.write("Getting exchange info...")
         self.get_exchange_info()
+        sys.stderr.write("done\n")
 
     def get_exchange_info(self):
         self.info = self.client.get_exchange_info()

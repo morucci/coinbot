@@ -1,6 +1,8 @@
 '''
 '''
 
+import sys
+
 from trading_plan import TradingPlanBase
 
 
@@ -28,19 +30,20 @@ def reconcile_amount(position, trade):
 
 class TradingPlan(TradingPlanBase):
     def __init__(self, app):
+        sys.stderr.write('Initializing...')
         super().__init__(app, TradingPlan)
+        sys.stderr.write('done\n')
+        sys.stderr.write('Reconciling...')
+        sys.stderr.flush()
         self.reconcile()
+        sys.stderr.write('done\n')
 
     def reconcile(self):
         "Do the magic between the local data, active orders and positions"
-        print('%f BTC' % self.app.capital)
         for t in self.app.trades:
-            print(t)
             orders = self.app.get_orders(t.pair)
-            print(orders)
             reconcile_orders(orders, t)
             position = self.app.get_position(t.pair[:-3])
-            print('%.2f %s' % (position, t.pair[:-3]))
             if t.status == 'entry' and len(orders) == 0:
                 if position == 0:
                     self.buy(t.pair, t.stop, t.entry)
@@ -105,14 +108,21 @@ class TradingPlan(TradingPlanBase):
                 pass
 
     def positions_cmd(self, args):
-        pass
+        for t in self.app.trades:
+            position = self.app.get_position(t.pair[:-3])
+            if position > 0:
+                print('%.2f %s' % (position, t.pair[:-3]))
 
     def trades_cmd(self, args):
         for trade in self.app.trades:
-            print(trade)
+            if len(args) == 0 or trade.pair in args:
+                print(trade)
 
     def orders_cmd(self, args):
-        pass
+        for t in self.app.trades:
+            if len(args) == 0 or t.pair in args:
+                orders = self.app.get_orders(t.pair)
+                print(orders)
 
     def capital_cmd(self, args):
         if len(args) > 0:
@@ -121,8 +131,8 @@ class TradingPlan(TradingPlanBase):
 
     def risk_cmd(self, args):
         print('Global risk: %.2f%%' % (self.app.risk * self.app.number * 100))
-        print('Current risk: %.2f%%' %
-              (self.get_engaged_capital() / self.app.get_capital() * 100))
+        print('Engaged capital: %.2f%%' %
+              (self.app.get_engaged_capital() / self.app.get_capital() * 100))
 
     def stop_cmd(self, args):
         pass

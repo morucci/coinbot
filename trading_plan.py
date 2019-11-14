@@ -20,9 +20,9 @@ class TradingPlanBase(object):
             # This is the first time for this text, so build a match list.
             if text:
                 self.matches = [s for s in self.options
-                                if s and s[0].startswith(text)]
+                                if s and s.startswith(text)]
             else:
-                self.matches = self.options[:]
+                self.matches = self.options
         # Return the state'th item from the match list,
         # if we have that many.
         try:
